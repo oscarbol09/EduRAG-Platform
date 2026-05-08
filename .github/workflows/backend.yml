@@ -10,15 +10,12 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: 'Darius-AI'
-  AZURE_WEBAPP_PACKAGE_PATH: './backend'
+  AZURE_RESOURCE_GROUP: 'Darius_Ai'
   PYTHON_VERSION: '3.11'
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
 
     steps:
       - name: Checkout code
@@ -29,35 +26,10 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Create and activate virtual environment
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-
       - name: Install dependencies
         run: |
+          cd backend
           pip install -r requirements.txt
-
-      - name: Zip package for deployment
-        run: zip -r release.zip . -x ".git/*" -x "venv/*" -x "__pycache__/*" -x "*.pyc"
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: webapp
-          path: backend/release.zip
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: production
-
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: webapp
-          path: .
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -70,9 +42,9 @@ jobs:
         uses: azure/webapps-deploy@v4
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          slot-name: 'production'
-          package: release.zip
+          package: ./backend
 
       - name: Configure startup command
         run: |
-          az webapp config set --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group Darius_Ai --linux-fx-version "PYTHON|3.11" --startup-file "python3 -m pip install --no-cache-dir -r /home/site/wwwroot/requirements.txt && python3 -m uvicorn main:app --host 0.0.0.0 --port 8000"
+          az webapp config set --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --linux-fx-version "PYTHON|3.11"
+          az webapp config set --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --startup-file "python3 -m pip install --no-cache-dir -r /home/site/wwwroot/requirements.txt && python3 -m uvicorn main:app --host 0.0.0.0 --port 8000"

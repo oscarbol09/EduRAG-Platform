@@ -10,7 +10,7 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: 'edurag-api'
-  AZURE_RESOURCE_GROUP: 'EduBot-app'
+  AZURE_RESOURCE_GROUP: 'Darius_Ai'
   PYTHON_VERSION: '3.11'
 
 jobs:
@@ -46,5 +46,5 @@ jobs:
 
       - name: Configure startup command
         run: |
-          az webapp config set --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --linux-fx-version "PYTHON|3.11"
+          az webapp config set --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --linux-fx-version "python|3.11"
           az webapp config set --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --startup-file "python3 -m pip install --no-cache-dir -r /home/site/wwwroot/requirements.txt && python3 -m uvicorn main:app --host 0.0.0.0 --port 8000"

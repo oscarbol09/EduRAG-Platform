@@ -1,0 +1,78 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+
+env:
+  AZURE_WEBAPP_NAME: 'Darius-AI'
+  AZURE_WEBAPP_PACKAGE_PATH: './backend'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Create and activate virtual environment
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Zip package for deployment
+        run: zip -r release.zip . -x ".git/*" -x "venv/*" -x "__pycache__/*" -x "*.pyc"
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp
+          path: backend/release.zip
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webapp
+          path: .
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v4
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          slot-name: 'production'
+          package: release.zip
+
+      - name: Configure startup command
+        run: |
+          az webapp config set --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group Darius_Ai --linux-fx-version "PYTHON|3.11" --startup-file "python3 -m pip install --no-cache-dir -r /home/site/wwwroot/requirements.txt && python3 -m uvicorn main:app --host 0.0.0.0 --port 8000"

@@ -1,4 +1,8 @@
 // Page component - server component for static export
 import EditChatbotClient from "./EditChatbotClient";
 
-export { EditChatbotClient as default };
+export function generateStaticParams() {
+  return [];
+}
+
+export default EditChatbotClient;

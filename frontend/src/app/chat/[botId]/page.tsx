@@ -5,6 +5,11 @@ import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import type { ChatMessage, ChatResponse, Message } from "@/lib/types";
 
+// Required for static export with dynamic routes
+export function generateStaticParams() {
+  return [];
+}
+
 export default function ChatPage() {
   const { botId } = useParams();
   const [messages, setMessages] = useState<Message[]>([]);

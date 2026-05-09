@@ -47,6 +47,9 @@ jobs:
   deploy:
     needs: build-and-deploy
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4

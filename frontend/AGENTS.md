@@ -1,91 +1,251 @@
-# Frontend Agent Guidelines
+# EduRAG Frontend — AGENTS.md
 
-## Proyecto
-EduRAG - Frontend Next.js 16 para plataforma SaaS educativa.
+Guía técnica para agentes de IA y desarrolladores que trabajen en el módulo `frontend/`. Leer antes de modificar, agregar o depurar cualquier archivo de este directorio.
+
+---
+
+## Propósito del Módulo
+
+SPA construida con **Next.js 16 (App Router)** + **Tailwind CSS** + **Radix UI**. Alojada en **Azure Static Web Apps** (`edurag-frontend`, West US 2). Sirve tres superficies de usuario distintas:
+
+- **Dashboard del docente** — crear y gestionar chatbots, subir documentos.
+- **Marketplace público** — estudiantes descubren y acceden a chatbots publicados.
+- **Interfaz de chat** (`/chat/[botId]`) — embebible vía `<iframe>` en Moodle u otros LMS.
+
+---
 
 ## Estructura del Proyecto
 
 ```
 frontend/
 ├── src/
-│   ├── app/              # Next.js App Router
-│   │   ├── page.tsx      # Home (marketplace)
-│   │   ├── login/        # Login page
-│   │   ├── teacher/      # Dashboard del docente
-│   │   │   ├── page.tsx  # Lista de chatbots
+│   ├── app/                        # Next.js App Router — file-based routing
+│   │   ├── layout.tsx              # Root layout — providers globales, fuentes
+│   │   ├── page.tsx                # Home / landing page
+│   │   ├── login/
+│   │   │   └── page.tsx            # Login de usuarios (email + password)
+│   │   ├── teacher/
+│   │   │   ├── page.tsx            # Dashboard del docente — lista de chatbots
 │   │   │   └── chatbots/
-│   │   │       └── new/  # Crear chatbot
-│   │   ├── marketplace/  # Marketplace público
+│   │   │       └── new/
+│   │   │           └── page.tsx    # Formulario de creación de chatbot
+│   │   ├── marketplace/
+│   │   │   └── page.tsx            # Marketplace público con búsqueda y filtros
 │   │   └── chat/
-│   │       └── [botId]/  # Chat interface
+│   │       └── [botId]/
+│   │           └── page.tsx        # Interfaz de chat — embebible vía iframe
 │   ├── lib/
-│   │   ├── api.ts        # Cliente API (fetch wrappers)
-│   │   ├── types.ts      # TypeScript types
-│   │   ├── context.tsx   # Auth context
-│   │   └── utils.ts      # Utilidades
-│   └── components/       # Componentes reutilizables
+│   │   ├── api.ts                  # Cliente HTTP centralizado — todos los llamados a la API
+│   │   ├── types.ts                # Tipos TypeScript de dominio
+│   │   ├── context.tsx             # AuthContext — estado global de autenticación
+│   │   └── utils.ts                # Funciones helper (formateo, fechas, etc.)
+│   └── components/                 # Componentes reutilizables
+├── public/                         # Assets estáticos
+├── test/                           # Tests (Vitest)
 ├── package.json
-└── .env.local
+├── next.config.ts                  # Configuración Next.js
+├── tailwind.config.ts
+├── tsconfig.json
+├── vitest.config.ts
+├── staticwebapp.config.json        # Reglas de routing para Azure Static Web Apps
+├── .env.local                      # Variables de entorno locales (NO commitear)
+└── AGENTS.md                       # Este archivo
 ```
 
-## API Client
+---
 
-El cliente API está en `src/lib/api.ts` y usa `NEXT_PUBLIC_API_URL`.
+## Cliente API (`src/lib/api.ts`)
+
+Todos los llamados al backend pasan por `api.ts`. Usa `NEXT_PUBLIC_API_URL` como base URL y adjunta automáticamente el token JWT desde `localStorage`.
 
 ```typescript
-// Ejemplo de uso
+// Importación
+import { api } from '@/lib/api';
+
+// Ejemplos de uso
 const chatbots = await api.chatbots.list();
-const response = await api.chat.send(botId, { message: "texto" });
+const chatbot = await api.chatbots.create(payload);
+const response = await api.chat.send(botId, { message: 'texto', conversation_id: '...' });
+const docs = await api.documents.list(chatbotId);
 ```
 
-## Variables de Entorno
+**Convención:** nunca usar `fetch` directamente en componentes. Centralizar toda la lógica HTTP en `api.ts`.
 
-```env
-NEXT_PUBLIC_API_URL=https://darius-ai-aqfkhna3evdqdte3.brazilsouth-01.azurewebsites.net
-```
+---
 
-## Páginas Principales
+## AuthContext (`src/lib/context.tsx`)
 
-| Ruta | Descripción |
-|------|-------------|
-| `/` | Home con marketplace de chatbots |
-| `/login` | Login de usuarios |
-| `/teacher` | Dashboard del docente |
-| `/teacher/chatbots/new` | Formulario de creación |
-| `/marketplace` | Lista pública de chatbots |
-| `/chat/[botId]` | Interfaz de chat con un chatbot |
-
-## Tipos Principales
+Provee estado global de autenticación via React Context.
 
 ```typescript
+const { user, token, login, logout, isLoading } = useAuth();
+```
+
+- `token` se persiste en `localStorage` bajo la clave `token`.
+- `user` se deserializa del payload JWT: `{ id, email, role }`.
+- En rutas protegidas, verificar `user?.role === 'teacher'` o redirigir a `/login`.
+
+---
+
+## Tipos Principales (`src/lib/types.ts`)
+
+```typescript
+interface User {
+  id: string;
+  email: string;
+  role: 'teacher' | 'student' | 'admin';
+}
+
 interface Chatbot {
   id: string;
+  owner_id: string;
   name: string;
   subject_area: string;
-  education_level: "secondary" | "university";
-  tone: "formal" | "friendly" | "technical";
-  restriction_level: "strict" | "guided" | "open";
+  education_level: 'secondary' | 'university';
+  tone: 'formal' | 'friendly' | 'technical';
+  welcome_message: string;
+  system_prompt_override?: string;
+  restriction_level: 'strict' | 'guided' | 'open';
+  llm_provider: 'gemini' | 'claude';
+  public_url: string;
+  embed_code: string;
   is_published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Document {
+  id: string;
+  chatbot_id: string;
+  filename: string;
+  mime_type: string;
+  blob_url: string;
+  status: 'queued' | 'processing' | 'indexed' | 'error';
+  chunk_count: number;
+  error_message?: string;
+  created_at: string;
 }
 
 interface ChatMessage {
   message: string;
   conversation_id?: string;
 }
+
+interface ChatResponse {
+  response: string;
+  conversation_id: string;
+  sources: string[];
+}
 ```
 
-## Deployment
+---
 
-- Azure Static Web Apps: `edurag-frontend`
-- URL: https://delightful-sea-04066b61e.7.azurestaticapps.net
-- CI/CD: `.github/workflows/frontend.yml`
-- Build: `npm run build`
-- Output: `.next/` (static export)
+## Rutas y Páginas
 
-## Notas Técnicas
+| Ruta | Descripción | Auth requerida |
+|---|---|---|
+| `/` | Landing page / entrada al marketplace | No |
+| `/login` | Login con email + password | No |
+| `/teacher` | Dashboard del docente — lista de chatbots propios | `role: teacher` |
+| `/teacher/chatbots/new` | Formulario de creación de chatbot | `role: teacher` |
+| `/marketplace` | Lista pública de chatbots publicados con búsqueda | No |
+| `/chat/[botId]` | Interfaz de chat — diseñada para funcionar dentro de iframe | No |
 
-- Next.js 16 con App Router
-- Tailwind CSS para estilos
-- Radix UI para componentes accesibles
-- Estado de auth en localStorage (`token`)
-- API fallback a demo-user si no hay token
+### Ruta `/chat/[botId]` — Embebible
+
+Esta ruta es especial: debe funcionar correctamente dentro de un `<iframe>` en Moodle u otro LMS. Consideraciones:
+
+- No incluir headers de navegación globales — la página debe ser autónoma.
+- Evitar redirecciones que rompan el iframe.
+- El embed code generado por el backend es: `<iframe src="/chat/{botId}" width="100%" height="600"></iframe>`.
+- La URL pública de producción base es: `https://delightful-sea-04066b61e.7.azurestaticapps.net`.
+
+---
+
+## Variables de Entorno
+
+```env
+# frontend/.env.local (NO commitear)
+NEXT_PUBLIC_API_URL=https://edurag-api.azurewebsites.net
+```
+
+Para desarrollo local contra backend local:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+---
+
+## Scripts Disponibles
+
+```bash
+npm run dev       # Servidor de desarrollo en http://localhost:3000
+npm run build     # Build de producción (verifica errores TypeScript)
+npm run start     # Servidor de producción local (requiere build previo)
+npm run lint      # ESLint
+npm run test      # Vitest (tests unitarios)
+```
+
+---
+
+## Tecnologías y Convenciones
+
+### Styling
+- **Tailwind CSS** — utility-first. No usar CSS modules ni styled-components.
+- **Radix UI** — para componentes accesibles (Dialog, Select, Tabs, etc.).
+- Paleta de colores y tokens definidos en `tailwind.config.ts`.
+
+### Estado
+- **React Context** (`context.tsx`) para estado de autenticación global.
+- **useState / useEffect** para estado local de componentes.
+- No usar Redux ni Zustand — el scope del MVP no lo requiere.
+
+### TypeScript
+- Tipado estricto en todos los archivos.
+- Nunca usar `any` salvo casos excepcionales documentados con `// eslint-disable-next-line`.
+- Exportar todos los tipos desde `types.ts`.
+
+### Fetch y Async
+- Todos los llamados a API via `api.ts` — nunca `fetch` directo en componentes.
+- Manejar siempre estados `loading` y `error` en componentes que hacen fetch.
+
+---
+
+## Azure Static Web Apps — Configuración
+
+`staticwebapp.config.json` define las reglas de routing para que el App Router de Next.js funcione correctamente:
+
+- Todas las rutas desconocidas deben redirigir a `index.html` (SPA fallback).
+- Configurar headers CORS si el chat embebible requiere recursos externos.
+
+---
+
+## Despliegue
+
+- **Automático** via GitHub Actions (`.github/workflows/frontend.yml`) en cada push a `main`.
+- Build: `npm run build` → output estático en `.next/`.
+- URL de producción: `https://delightful-sea-04066b61e.7.azurestaticapps.net`.
+- Secret requerido en GitHub Actions: `AZURE_STATIC_WEB_APPS_TOKEN`.
+
+---
+
+## Testing
+
+```bash
+# Unitarios
+npm run test
+
+# Verificar build sin desplegar
+npm run build
+```
+
+Tests ubicados en `test/`. Framework: **Vitest**.
+
+---
+
+## Notas Importantes
+
+- El token JWT se guarda en `localStorage`. Para mayor seguridad en producción, evaluar migrar a `httpOnly cookies` con un endpoint de refresh.
+- Las páginas del docente deben verificar `role === 'teacher'` y redirigir a `/login` si el usuario no está autenticado o no tiene el rol correcto.
+- El polling de estado de documentos (para mostrar progreso de procesamiento en tiempo real) debe hacerse contra `GET /documents/{id}` con un intervalo de 3-5 segundos, deteniéndose cuando `status === 'indexed'` o `status === 'error'`.
+- El `CLAUDE.md` en este directorio es un alias que apunta a `AGENTS.md` — ambos contienen la misma guía.

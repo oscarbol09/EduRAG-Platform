@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EduRAG Frontend
 
-## Getting Started
+SPA del proyecto EduRAG — plataforma SaaS educativa con chatbots RAG. Construida con **Next.js 16 (App Router)** y desplegada en **Azure Static Web Apps**.
 
-First, run the development server:
+---
+
+## Requisitos
+
+- Node.js 18+
+- npm 9+
+
+---
+
+## Instalación y Desarrollo Local
 
 ```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Configurar variables de entorno
+cp .env.local.example .env.local
+# Editar .env.local → NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# 3. Iniciar servidor de desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrir [http://localhost:3000](http://localhost:3000) en el navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Variables de Entorno
 
-## Learn More
+| Variable | Descripción | Ejemplo |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | URL base del backend FastAPI | `https://edurag-api.azurewebsites.net` |
 
-To learn more about Next.js, take a look at the following resources:
+Para desarrollo local contra backend en localhost:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+```bash
+npm run dev      # Servidor de desarrollo con hot-reload
+npm run build    # Build de producción — verifica TypeScript y genera estáticos
+npm run start    # Servidor de producción local (requiere build previo)
+npm run lint     # ESLint
+npm run test     # Tests con Vitest
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Estructura de Rutas
+
+| Ruta | Descripción |
+|---|---|
+| `/` | Landing page |
+| `/login` | Login de usuarios |
+| `/teacher` | Dashboard del docente |
+| `/teacher/chatbots/new` | Formulario de creación de chatbot |
+| `/marketplace` | Marketplace público de chatbots |
+| `/chat/[botId]` | Interfaz de chat (embebible en Moodle via `<iframe>`) |
+
+---
+
+## Stack Técnico
+
+- **Next.js 16** — App Router, SSR para marketplace (SEO), estático para chat embebible.
+- **Tailwind CSS** — utility-first styling.
+- **Radix UI** — componentes accesibles (Dialog, Select, Tabs, etc.).
+- **TypeScript** — tipado estricto en toda la base de código.
+- **Vitest** — tests unitarios.
+
+---
+
+## Despliegue
+
+Despliegue automático vía **GitHub Actions** en cada push a `main`.
+
+**URL de producción:** `https://delightful-sea-04066b61e.7.azurestaticapps.net`
+
+**Servicio Azure:** Static Web Apps `edurag-frontend` — West US 2 — Free Tier.
+
+---
+
+## Guía para Agentes de IA
+
+Ver [AGENTS.md](./AGENTS.md) para la guía técnica completa: estructura de archivos, uso del cliente API, AuthContext, convenciones de código y notas de implementación.

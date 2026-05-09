@@ -30,9 +30,11 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Create .env.local
-        run: |
-          echo "NEXT_PUBLIC_API_URL=${{ env.API_URL }}" > frontend/.env.local
+      - name: Build Next.js app
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ env.API_URL }}
+        run: npm run build
 
       - name: Deploy to Azure Static Web App
         uses: azure/static-web-apps-deploy@v1
@@ -41,4 +43,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: 'upload'
           app_location: 'frontend'
-          skip_app_build: false
+          output_location: '.next/standalone'
+          skip_app_build: true
+        env:
+          NEXT_PUBLIC_API_URL: ${{ env.API_URL }}

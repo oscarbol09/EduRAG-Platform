@@ -19,6 +19,7 @@ from vector_store import query_similar, delete_chatbot_vectors
 from llm_client import get_llm_client
 from document_uploader import upload_file_to_blob, publish_to_queue
 from auth import get_current_user, get_current_user_optional
+from password import hash_password, verify_password
 
 app = FastAPI(title="EduRAG API", version="0.1.0")
 
@@ -89,8 +90,13 @@ async def get_current_user_endpoint(request: Request):
 @app.post("/auth/login")
 async def login(body: LoginRequest):
     user = await get_user_by_email(body.email)
-    if not user or user.get("password") != body.password:
+    if not user:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
+    
+    password_hash = user.get("password")
+    if not password_hash or not verify_password(body.password, password_hash):
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+    
     token = user.get("id", str(uuid.uuid4()))
     return {"token": token, "user": user}
 
@@ -101,10 +107,11 @@ async def register(body: RegisterRequest):
     if existing:
         raise HTTPException(status_code=400, detail="El email ya está registrado")
     user_id = str(uuid.uuid4())
+    password_hash = hash_password(body.password)
     user = {
         "id": user_id,
         "email": body.email,
-        "password": body.password,
+        "password": password_hash,
         "role": body.role,
         "auth_method": "email_password",
         "is_active": True,

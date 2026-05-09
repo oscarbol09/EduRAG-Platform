@@ -1,7 +1,6 @@
 {
-  "navigationFallback": {
-    "rewrite": "/index.html",
-    "exclude": ["/_next/*", "/assets/*", "/images/*", "/api/*"]
+  "platform": {
+    "apiRuntime": "node:20"
   },
   "routes": [
     {
@@ -9,8 +8,16 @@
       "headers": {
         "cache-control": "public, max-age=31536000, immutable"
       }
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": ["anonymous"]
     }
   ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/_next/*", "/static/*", "/favicon.ico", "*.json", "*.js", "*.css", "*.png", "*.jpg", "*.svg"]
+  },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY"

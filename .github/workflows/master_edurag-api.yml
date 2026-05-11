@@ -24,17 +24,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Create and start virtual environment and install dependencies
-        run: |
-          python -m venv antenv
-          source antenv/bin/activate
-          pip install -r requirements.txt
-
       - name: Prepare deployment package (backend as root)
         run: |
           mkdir deploy
           cp -r backend/* deploy/
           cp requirements.txt deploy/
+
+      - name: Pre-install dependencies into package (avoids slow runtime pip install)
+        run: |
+          pip install -r deploy/requirements.txt \
+            --target deploy/.python_packages/lib/site-packages \
+            --no-cache-dir
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
@@ -71,3 +71,4 @@ jobs:
           app-name: 'edurag-api'
           slot-name: 'Production'
           package: '.'
+          startup-command: 'python -m uvicorn main:app --host 0.0.0.0 --port 8080 --log-level info'

@@ -77,11 +77,8 @@ jobs:
             --name edurag-api \
             --settings \
               SCM_DO_BUILD_DURING_DEPLOYMENT=false \
-              CORS_ORIGINS="*" \
-              VIRTUAL_ENV=/home/site/wwwroot/antenv \
-              PATH="/home/site/wwwroot/antenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-          echo "Waiting 30s for settings to apply before deploy..."
-          sleep 30
+              CORS_ORIGINS="*"
+          sleep 20
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3

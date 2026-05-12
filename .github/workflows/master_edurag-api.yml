@@ -19,30 +19,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python version
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
       - name: Prepare deployment package (backend as root)
         run: |
           mkdir deploy
           cp -r backend/* deploy/
           cp requirements.txt deploy/
 
-      - name: Pre-install dependencies into package (avoids slow runtime pip install)
-        run: |
-          pip install -r deploy/requirements.txt \
-            --target deploy/.python_packages/lib/site-packages \
-            --no-cache-dir
-
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            deploy/
-            !antenv/
+          path: deploy/
 
   deploy:
     runs-on: ubuntu-latest
@@ -63,6 +50,13 @@ jobs:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_70059F3C7F3A49C898C1E78217D920AB }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_B604F1544FDF4F41B5166626DA5788C7 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_F2D26BC1196943029A3B7E15C9E4136C }}
+
+      - name: Enable Oryx build during deployment (pip install at deploy time, not startup)
+        run: |
+          az webapp config appsettings set \
+            --resource-group edubot-app \
+            --name edurag-api \
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
